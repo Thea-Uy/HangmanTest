@@ -1,13 +1,10 @@
 name: Ruff Lint
 
 on:
-  push:
-    branches:
-      - main       
   pull_request:
     branches:
-      - main      
-  workflow_dispatch: 
+      - feedback
+  workflow_dispatch:
 
 jobs:
   ruff:
