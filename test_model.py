@@ -1,50 +1,29 @@
+import pytest
 from model import HangmanModel, Verdict
-
 
 # Constructor tests
 def test_init_empty_answer():
     """Test that empty answer raises ValueError."""
-    try:
+    with pytest.raises(ValueError, match="Answer cannot be empty"):
         HangmanModel("", 5)
-        assert False, "Should have raised ValueError"
-    except ValueError:
-        pass
 
 
 def test_init_nonpositive_lives():
     """Test that zero or negative lives raises ValueError."""
-    try:
+    with pytest.raises(ValueError, match="Lives must be positive"):
         HangmanModel("aloha", 0)
-        assert False, "Should have raised ValueError"
-    except ValueError:
-        pass
-
-    try:
+    with pytest.raises(ValueError, match="Lives must be positive"):
         HangmanModel("aloha", -1)
-        assert False, "Should have raised ValueError"
-    except ValueError:
-        pass
 
 
 def test_init_constraint_violations():
     """Test constraint violations for answer length, lives count, and non-alphanumeric."""
-    try:
+    with pytest.raises(ValueError, match="Answer too long"):
         HangmanModel("masyadongmahaba", 5)  # > 10 chars
-        assert False, "Should have raised ValueError"
-    except ValueError:
-        pass
-
-    try:
+    with pytest.raises(ValueError, match="Too many lives"):
         HangmanModel("aloha", 11)  # > 10 lives
-        assert False, "Should have raised ValueError"
-    except ValueError:
-        pass
-
-    try:
+    with pytest.raises(ValueError, match="Answer must be alphanumeric"):
         HangmanModel("aloha!", 5)  # Non-alphanumeric
-        assert False, "Should have raised ValueError"
-    except ValueError:
-        pass
 
 
 def test_init_valid():
