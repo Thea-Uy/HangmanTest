@@ -73,7 +73,8 @@ class HangmanModel:
     def guess_is_already_guessed(self, guess: str) -> bool:
         if len(guess) != 1:
             return False
-        return guess.lower() in self._incorrect_guesses or guess in self._correct_guesses
+        return guess.lower() in self._incorrect_guesses or guess.lower() in self._correct_guesses
 
     def display_answer(self) -> str:
+
         return self._answer
