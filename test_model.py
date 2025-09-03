@@ -2,7 +2,7 @@ import pytest
 from model import HangmanModel
 
 
-class Init:
+
     def init(self) -> None:
         model = HangmanModel("hello", 5)
         assert model.lives_left == 5
@@ -22,8 +22,6 @@ class Init:
         with pytest.raises(ValueError, match="lives must be at least 1"):
             HangmanModel("hello", -1)
 
-
-class Guessing:
     def correct_guess_lowercase(self) -> None:
         model = HangmanModel("hello", 3)
         model.make_guess("h")
@@ -102,7 +100,6 @@ class Guessing:
         assert "h" in model.get_all_guesses()
 
 
-class GameEnd:
     def win(self) -> None:
         model = HangmanModel("hi", 3)
         model.make_guess("h")
@@ -153,7 +150,6 @@ class GameEnd:
         assert model.did_player_lose 
         assert "h" not in model.get_all_guesses() 
 
-class UsedByController:
     def test_get_all_guesses_sorted(self) -> None:
         model = HangmanModel("hello", 5)
         model.make_guess("z")
@@ -205,8 +201,6 @@ class UsedByController:
         model = HangmanModel("HeLLo", 3)
         assert model.get_answer_for_display() == "hello"
 
-
-class EdgeCases:
     def single_letter_word(self) -> None:
         model = HangmanModel("a", 2)
         model.make_guess("a")
@@ -256,4 +250,5 @@ class EdgeCases:
         model.make_guess("b")  
         
         assert model.did_player_win
+
         assert model.lives_left == 1
