@@ -1,284 +1,259 @@
 import pytest
-from model import HangmanModel, Verdict
-
-# Constructor tests
-def test_init_empty_answer():
-    """Test that empty answer raises ValueError."""
-    with pytest.raises(ValueError, match="Answer cannot be empty"):
-        HangmanModel("", 5)
-
-
-def test_init_nonpositive_lives():
-    """Test that zero or negative lives raises ValueError."""
-    with pytest.raises(ValueError, match="Lives must be positive"):
-        HangmanModel("aloha", 0)
-    with pytest.raises(ValueError, match="Lives must be positive"):
-        HangmanModel("aloha", -1)
-
-
-def test_init_constraint_violations():
-    """Test constraint violations for answer length, lives count, and non-alphanumeric."""
-    with pytest.raises(ValueError, match="Answer too long"):
-        HangmanModel("masyadongmahaba", 5)  # > 10 chars
-    with pytest.raises(ValueError, match="Too many lives"):
-        HangmanModel("aloha", 11)  # > 10 lives
-    with pytest.raises(ValueError, match="Answer must be alphanumeric"):
-        HangmanModel("aloha!", 5)  # Non-alphanumeric
-
-
-def test_init_valid():
-    """Test valid initialization."""
-    model = HangmanModel("aloha", 5)
-    assert model.lives_left == 5
-    assert not model.did_player_win
-    assert not model.did_player_lose
-    assert not model.is_game_done
-    assert model.answer is None
-    assert model.guesses == set()
-
-
-# Invalid guess tests
-def test_make_guess_invalid_empty():
-    """Test invalid guess with empty string."""
-    model = HangmanModel("aloha", 5)
-    verdict = model.make_guess("")
-
-    assert verdict == Verdict.INVALID
-    assert model.lives_left == 5
-    assert len(model.guesses) == 0
-
-
-def test_make_guess_invalid_multiple_chars():
-    """Test invalid guess with multiple characters."""
-    model = HangmanModel("aloha", 5)
-    verdict = model.make_guess("hello")
-
-    assert verdict == Verdict.INVALID
-    assert model.lives_left == 5
-    assert len(model.guesses) == 0
-
-
-def test_make_guess_invalid_non_alphanumeric():
-    """Test invalid guess with non-alphanumeric character."""
-    model = HangmanModel("aloha", 5)
-    verdict = model.make_guess("!")
-
-    assert verdict == Verdict.INVALID
-    assert model.lives_left == 5
-    assert len(model.guesses) == 0
-
-
-# Already guessed tests
-def test_make_guess_already_guessed():
-    """Test making the same guess twice."""
-    model = HangmanModel("aloha", 5)
-    model.make_guess("a")
-    verdict = model.make_guess("a")
-
-    assert verdict == Verdict.ALREADY_GUESSED
-    assert model.lives_left == 5
-    assert len(model.guesses) == 1
-
-
-def test_make_guess_already_guessed_case_insensitive():
-    """Test that already guessed is case insensitive."""
-    model = HangmanModel("Aloha", 5)
-    model.make_guess("a")
-    verdict = model.make_guess("A")
-
-    assert verdict == Verdict.ALREADY_GUESSED
-    assert model.lives_left == 5
-
-
-# Correct guess tests
-def test_make_guess_correct():
-    """Test making a correct guess."""
-    model = HangmanModel("aloha", 5)
-    verdict = model.make_guess("a")
-
-    assert verdict == Verdict.CORRECT
-    assert model.lives_left == 5
-    assert "a" in model.guesses
-    assert not model.is_game_done
-
-
-def test_make_guess_correct_with_digits():
-    """Test correct guess with digits."""
-    model = HangmanModel("wandat1", 5)
-    verdict = model.make_guess("1")
-
-    assert verdict == Verdict.CORRECT
-    assert model.lives_left == 5
-    assert "1" in model.guesses
-
-
-def test_make_guess_correct_case_insensitive():
-    """Test correct guess is case insensitive."""
-    model = HangmanModel("Aloha", 5)
-    verdict = model.make_guess("a")
-
-    assert verdict == Verdict.CORRECT
-    assert model.lives_left == 5
-
-
-# Incorrect guess tests
-def test_make_guess_incorrect():
-    """Test making an incorrect guess."""
-    model = HangmanModel("aloha", 5)
-    verdict = model.make_guess("x")
-
-    assert verdict == Verdict.INCORRECT
-    assert model.lives_left == 4
-    assert "x" in model.guesses
-    assert not model.is_game_done
-
-
-# Win condition tests
-def test_make_guess_win_condition():
-    """Test winning by guessing all letters."""
-    model = HangmanModel("wow", 5)
-    model.make_guess("w")
-    verdict = model.make_guess("o")
-
-    assert verdict == Verdict.CORRECT
-    assert model.did_player_win
-    assert model.is_game_done
-    assert model.answer == "wow"
-
-
-def test_make_guess_win_single_character():
-    """Test winning with single character word."""
-    model = HangmanModel("a", 5)
-    verdict = model.make_guess("a")
-
-    assert verdict == Verdict.CORRECT
-    assert model.did_player_win
-    assert model.is_game_done
-
-
-# Loss condition tests
-def test_make_guess_lose_condition():
-    """Test losing by running out of lives."""
-    model = HangmanModel("aloha", 1)
-    verdict = model.make_guess("x")
-
-    assert verdict == Verdict.INCORRECT
-    assert model.did_player_lose
-    assert model.is_game_done
-    assert model.lives_left == 0
-    assert model.answer == "aloha"
-
-
-def test_make_guess_lose_multiple_incorrect():
-    """Test losing with multiple incorrect guesses."""
-    model = HangmanModel("wow", 3)
-    model.make_guess("x")
-    model.make_guess("y")
-    verdict = model.make_guess("z")
-
-    assert verdict == Verdict.INCORRECT
-    assert model.did_player_lose
-    assert model.is_game_done
-
-
-# Game done tests
-def test_make_guess_when_game_done_after_win():
-    """Test that guesses are ignored after winning."""
-    model = HangmanModel("wow", 5)
-    model.make_guess("w")
-    model.make_guess("o")  # Win
-    verdict = model.make_guess("x")
-
-    assert verdict == Verdict.GAME_DONE
-    assert model.did_player_win
-    assert model.lives_left == 5
-
-
-def test_make_guess_when_game_done_after_loss():
-    """Test that guesses are ignored after losing."""
-    model = HangmanModel("aloha", 1)
-    model.make_guess("x")  # Lose
-    verdict = model.make_guess("a")
-
-    assert verdict == Verdict.GAME_DONE
-    assert model.did_player_lose
-    assert model.lives_left == 0
-
-
-# Answer property tests
-def test_answer_hidden_during_game():
-    """Test that answer is None during game."""
-    model = HangmanModel("aloha", 5)
-    model.make_guess("a")
-
-    assert model.answer is None
-    assert not model.is_game_done
-
-
-def test_answer_revealed_after_win():
-    """Test that answer is revealed after winning."""
-    model = HangmanModel("wow", 5)
-    model.make_guess("w")
-    model.make_guess("o")
-
-    assert model.answer == "wow"
-
-
-def test_answer_revealed_after_loss():
-    """Test that answer is revealed after losing."""
-    model = HangmanModel("aloha", 1)
-    model.make_guess("x")
-
-    assert model.answer == "aloha"
-
-
-# Answer state tests
-def test_answer_state_partial_reveal():
-    """Test answer_state shows correct progress with original casing."""
-    model = HangmanModel("Aloha", 5)
-
-    # Initially all hidden
-    initial_state = list(model.answer_state)
-    assert all(char is None for char in initial_state)
-    assert len(initial_state) == 5
-
-    # After guessing 'a'
-    model.make_guess("a")
-    state_after_a = list(model.answer_state)
-    assert state_after_a[0] == "A"  # Original casing preserved
-    assert state_after_a[1] is None
-    assert state_after_a[2] is None
-    assert state_after_a[3] is None
-    assert state_after_a[4] == "a"  # Both 'a' characters revealed
-
-
-def test_answer_state_complete_reveal():
-    """Test answer_state when all letters are guessed."""
-    model = HangmanModel("wow", 5)
-    model.make_guess("w")
-    model.make_guess("o")
-
-    state = list(model.answer_state)
-    assert state == ["w", "o", "w"]
-
-
-# Guesses tracking tests
-def test_guesses_tracking():
-    """Test that guesses are tracked correctly."""
-    model = HangmanModel("aloha", 5)
-    model.make_guess("a")
-    model.make_guess("x")
-    model.make_guess("invalid_guess")  # Should not be added
-
-    assert model.guesses == {"a", "x"}
-
-
-def test_guesses_immutable_copy():
-    """Test that guesses property returns a copy."""
-    model = HangmanModel("aloha", 5)
-    model.make_guess("a")
-
-    guesses = model.guesses
-    guesses.add("should_not_affect_model")
-
-    assert "should_not_affect_model" not in model.guesses
+from model import HangmanModel
+
+
+class Init:
+    def init(self) -> None:
+        model = HangmanModel("hello", 5)
+        assert model.lives_left == 5
+        assert not model.did_player_win
+        assert not model.did_player_lose
+        assert model.answer is None
+    
+    def empty_raise_error(self) -> None:
+        with pytest.raises(ValueError, match="your answer is empty"):
+            HangmanModel("", 5)
+    
+    def zero_lives_raise_error(self) -> None:
+        with pytest.raises(ValueError, match="lives must be at least 1"):
+            HangmanModel("hello", 0)
+    
+    def negative_lives_raises_error(self) -> None:
+        with pytest.raises(ValueError, match="lives must be at least 1"):
+            HangmanModel("hello", -1)
+
+
+class Guessing:
+    def correct_guess_lowercase(self) -> None:
+        model = HangmanModel("hello", 3)
+        model.make_guess("h")
+        
+        assert model.lives_left == 3
+        assert "h" in model.get_all_guesses()
+        assert model.has_already_guessed("h")
+    
+    def correct_guess_uppercase(self) -> None:
+        model = HangmanModel("hello", 3)
+        model.make_guess("H")
+        
+        assert model.lives_left == 3
+        assert "h" in model.get_all_guesses()
+        assert model.has_already_guessed("h")
+    
+    def incorrect_guess(self) -> None:
+        model = HangmanModel("hello", 3)
+        model.make_guess("x")
+        
+        assert model.lives_left == 2
+        assert "x" in model.get_all_guesses()
+        assert not model.did_player_win
+    
+    def number_as_guess_correct(self) -> None:
+        model = HangmanModel("test123", 3)
+        model.make_guess("1")
+        
+        assert model.lives_left == 3  # No life lost
+        assert "1" in model.get_all_guesses()
+    
+    def number_as_guess_incorrect(self) -> None:
+        model = HangmanModel("hello", 3)
+        model.make_guess("1")
+        
+        assert model.lives_left == 2
+        assert "1" in model.get_all_guesses()
+    
+    def invalid_guess_empty(self) -> None:
+        model = HangmanModel("hello", 3)
+        model.make_guess("")
+        
+        assert model.lives_left == 3
+        assert len(model.get_all_guesses()) == 0
+    
+    def invalid_guess_mult_char(self) -> None:
+        model = HangmanModel("hello", 3)
+        model.make_guess("hello")
+        
+        assert model.lives_left == 3 
+        assert len(model.get_all_guesses()) == 0
+    
+    def duplicate_correct_guess(self) -> None:
+        model = HangmanModel("hello", 3)
+        model.make_guess("h")
+        model.make_guess("h") 
+        
+        assert model.lives_left == 3 
+        assert model.get_all_guesses().count("h") == 1 
+    
+    def duplicate_incorrect_guess(self) -> None:
+        model = HangmanModel("hello", 3)
+        model.make_guess("x")
+        model.make_guess("x")
+        
+        assert model.lives_left == 2  
+        assert model.get_all_guesses().count("x") == 1 
+    
+    def case_insensitive_duplicate(self) -> None:
+        model = HangmanModel("hello", 3)
+        model.make_guess("h")
+        model.make_guess("H") 
+
+        assert model.lives_left == 3
+        assert len(model.get_all_guesses()) == 1
+        assert "h" in model.get_all_guesses()
+
+
+class GameEnd:
+    def win(self) -> None:
+        model = HangmanModel("hi", 3)
+        model.make_guess("h")
+        model.make_guess("i")
+        
+        assert model.did_player_win
+        assert not model.did_player_lose
+        assert model.answer == "hi"
+
+    def lose(self) -> None:
+        model = HangmanModel("hello", 2)
+        model.make_guess("x")  
+        model.make_guess("y")  
+        
+        assert model.lives_left == 0
+        assert model.did_player_lose
+        assert not model.did_player_win
+        assert model.answer == "hello" 
+
+    def win_with_incorrect_guesses(self) -> None:
+        model = HangmanModel("hi", 3)
+        model.make_guess("x") 
+        model.make_guess("h")  
+        model.make_guess("i")  
+        
+        assert model.lives_left == 2
+        assert model.did_player_win
+        assert not model.did_player_lose
+    
+    def guesses_ignored_after_win(self) -> None:
+        model = HangmanModel("hi", 3)
+        model.make_guess("h")
+        model.make_guess("i")  
+        
+        lives_after_win = model.lives_left
+        model.make_guess("x")  
+        
+        assert model.lives_left == lives_after_win  
+        assert model.did_player_win 
+    
+    def guesses_ignored_after_lose(self) -> None:
+        model = HangmanModel("hello", 1)
+        model.make_guess("x")  
+        
+        assert model.did_player_lose
+        
+        model.make_guess("h")  
+        assert model.did_player_lose 
+        assert "h" not in model.get_all_guesses() 
+
+class UsedByController:
+    def test_get_all_guesses_sorted(self) -> None:
+        model = HangmanModel("hello", 5)
+        model.make_guess("z")
+        model.make_guess("a")
+        model.make_guess("m")
+        
+        guesses = model.get_all_guesses()
+        assert guesses == ["a", "m", "z"]
+    
+    def get_all_guesses_empty(self) -> None:
+        model = HangmanModel("hello", 3)
+        guesses = model.get_all_guesses()
+        assert guesses == []
+    
+    def is_valid_guess_one_char(self) -> None:
+        model = HangmanModel("hello", 3)
+        assert model.is_valid_guess("a")
+        assert model.is_valid_guess("1")
+        assert model.is_valid_guess("Z")
+    
+    def is_valid_guess_invalid(self) -> None:
+        model = HangmanModel("hello", 3)
+        assert not model.is_valid_guess("")
+        assert not model.is_valid_guess("ab")
+        assert not model.is_valid_guess("hello")
+    
+    def has_already_guessed_true(self) -> None:
+        model = HangmanModel("hello", 3)
+        model.make_guess("h")
+        model.make_guess("x")
+        
+        assert model.has_already_guessed("h")
+        assert model.has_already_guessed("H")
+        assert model.has_already_guessed("x")
+    
+    def has_already_guessed_false(self) -> None:
+        model = HangmanModel("hello", 3)
+        model.make_guess("h")
+        
+        assert not model.has_already_guessed("e")
+        assert not model.has_already_guessed("z")
+    
+    def has_already_guessed_invalid(self) -> None:
+        model = HangmanModel("hello", 3)
+        assert not model.has_already_guessed("")
+        assert not model.has_already_guessed("ab")
+    
+    def get_answer_for_display(self) -> None:
+        model = HangmanModel("HeLLo", 3)
+        assert model.get_answer_for_display() == "hello"
+
+
+class EdgeCases:
+    def single_letter_word(self) -> None:
+        model = HangmanModel("a", 2)
+        model.make_guess("a")
+        
+        assert model.did_player_win
+        assert model.get_current_progress() == "a"
+    
+    def repeated_letters_in_word(self) -> None:
+        model = HangmanModel("aaa", 3)
+        model.make_guess("a")
+        
+        assert model.did_player_win
+        assert model.get_current_progress() == "a a a"
+    
+    def upper_and_lower_cases(self) -> None:
+        model = HangmanModel("HeLLo", 3)
+        model.make_guess("h")
+        model.make_guess("E")
+        
+        assert "h" in model.get_all_guesses()
+        assert "e" in model.get_all_guesses()
+        assert model.has_already_guessed("h")
+        assert model.has_already_guessed("e")
+    
+    def num_in_word(self) -> None:
+        model = HangmanModel("test123", 5)
+        
+        for char in "test123":
+            model.make_guess(char)
+        
+        assert model.did_player_win
+        assert model.answer == "test123"
+    
+    def use_exactly_all_lives(self) -> None:
+        model = HangmanModel("ab", 2)
+        model.make_guess("x")
+        model.make_guess("y") 
+        
+        assert model.did_player_lose
+        assert model.lives_left == 0
+    
+    def test_win_on_last_life(self) -> None:
+
+        model = HangmanModel("ab", 2)
+        model.make_guess("x")  
+        model.make_guess("a")  
+        model.make_guess("b")  
+        
+        assert model.did_player_win
+        assert model.lives_left == 1

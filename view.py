@@ -30,7 +30,7 @@ class HangmanView:
         print(f"Lives left: {lives}")
 
     def show_guesses(self, guesses: set[str]):
-        print(f"Guesses: {', '.join(sorted(guesses))}")
+        print(f"Guesses: {','.join(sorted(guesses))}")
 
     def show_answer_state(self, answer_state: Sequence[str | None]):
         display: list[str] = [

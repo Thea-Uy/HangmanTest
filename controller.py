@@ -1,58 +1,59 @@
-from model import HangmanModel, Verdict
+from collections.abc import Sequence
+from model import HangmanModel
 from view import HangmanView
 
-
 class HangmanController:
-    """Controller that coordinates between HangmanModel and HangmanView."""
+	def __init__(self, model: HangmanModel, view: HangmanView) -> None:
+		self.model = model
+		self.view = view
 
-    def __init__(self, model: HangmanModel, view: HangmanView) -> None:
-        """Initialize controller with model and view components."""
-        self._model: HangmanModel = model
-        self._view: HangmanView = view
+	def start(self) -> None:
+		while not (self.model.did_player_win or self.model.did_player_lose):
+			self.display_game_state()
 
-    def start(self) -> None:
-        """Start the game and handle the main game loop."""
-        model = self._model
-        view = self._view
+			guess = self.view.prompt_guess()
 
-        # Show initial state before first prompt
-        view.show_answer_state(model.answer_state)
-        view.show_guesses(model.guesses)
-        view.show_lives_left(model.lives_left)
+			self.check_guess(guess)
 
-        while not model.is_game_done:
-            # Get guess and process it
-            guess: str = view.prompt_guess()
-            verdict: Verdict = model.make_guess(guess)
 
-            # Show verdict result immediately, but if this guess finishes the game,
-            # show the final win/lose message instead of the regular verdict.
-            match verdict:
-                case Verdict.INVALID:
-                    view.show_invalid_guess(guess)
-                case Verdict.ALREADY_GUESSED:
-                    view.show_already_guessed(guess)
-                case Verdict.CORRECT:
-                    # If this correct guess made the player win, show win immediately
-                    if model.did_player_win:
-                        answer = model.answer
-                        assert answer is not None
-                        view.show_win(answer)
-                        break
-                    view.show_correct_guess(guess)
-                case Verdict.INCORRECT:
-                    # If this incorrect guess made the player lose, show lose immediately
-                    if model.did_player_lose:
-                        answer = model.answer
-                        assert answer is not None
-                        view.show_lose(answer)
-                        break
-                    view.show_incorrect_guess(guess)
-                case Verdict.GAME_DONE:
-                    view.show_game_done()
-                    break  # Don't show state again
+		self.display_game_end()
 
-            # Show updated state only if game continues
-            view.show_answer_state(model.answer_state)
-            view.show_guesses(model.guesses)
-            view.show_lives_left(model.lives_left)
+	def display_game_state(self) -> None:
+		answer_state = self.answer_state()
+		self.view.show_answer_state(answer_state)
+
+		guesses = set(self.model.get_all_guesses())
+		self.view.show_guesses(guesses)
+
+		self.view.show_lives_left(self.model.lives_left)
+
+	def answer_state(self) -> Sequence[str | None]:
+		answer = self.model.display_answer()
+		guessed = set(self.model.get_all_guesses())
+
+		return [character if character in guessed else None for character in answer]
+
+	def check_guess(self, guess: str) -> None:
+		if not self.model.guess_is_valid(guess):
+			self.view.show_invalid_guess(guess)
+			return
+		if self.model.guess_is_already_guessed(guess):
+			self.view.show_already_guessed(guess)
+			return
+
+		self.model.make_guess(guess)
+		guess_lower = guess.lower()
+		guess_is_correct = guess_lower in self.model._correct_guesses
+
+		if guess_is_correct:
+			self.view.show_correct_guess(guess)
+		else:
+			self.view.show_incorrect_guess(guess)
+
+	def display_game_end(self) -> None:
+		answer = self.model.answer or self.model.display_answer()
+
+		if self.model.did_player_win:
+			self.view.show_win(answer or "")
+		else:
+			self.view.show_lose(answer or "")
