@@ -1,59 +1,44 @@
-from collections.abc import Sequence
 from model import HangmanModel
-from view import HangmanView
+
 
 class HangmanController:
-	def __init__(self, model: HangmanModel, view: HangmanView) -> None:
-		self.model = model
-		self.view = view
+    def __init__(self, word: str, lives: int) -> None:
+        self.model = HangmanModel(word, lives)
 
-	def start(self) -> None:
-		while not (self.model.did_player_win or self.model.did_player_lose):
-			self.display_game_state()
+    def get_current_progress(self) -> str:
+        return self.model.get_current_progress()
 
-			guess = self.view.prompt_guess()
+    def get_all_guesses(self) -> list[str]:
+        return self.model.get_all_guesses()
 
-			self.check_guess(guess)
+    def get_lives_left(self) -> int:
+        return self.model.lives_left
+
+    def get_answer(self) -> str | None:
+        return self.model.answer
+
+    def get_answer_for_display(self) -> str:
+        return self.model.get_answer_for_display()
+
+    def has_already_guessed(self, guess: str) -> bool:
+        return self.model.has_already_guessed(guess)
+
+    def is_valid_guess(self, guess: str) -> bool:
+        return self.model.is_valid_guess(guess)
+
+    def make_guess(self, guess: str) -> None:
+        if self.model.did_player_win or self.model.did_player_lose:
+            return  # Ignore guesses after game ends
+        if not self.is_valid_guess(guess):
+            return  # Ignore invalid guess
+        if self.has_already_guessed(guess):
+            return  # Ignore duplicate guess
+        self.model.make_guess(guess)
+
+    def player_won(self) -> bool:
+        return self.model.did_player_win
+
+    def player_lost(self) -> bool:
+        return self.model.did_player_lose
 
 
-		self.display_game_end()
-
-	def display_game_state(self) -> None:
-		answer_state = self.answer_state()
-		self.view.show_answer_state(answer_state)
-
-		guesses = set(self.model.get_all_guesses())
-		self.view.show_guesses(guesses)
-
-		self.view.show_lives_left(self.model.lives_left)
-
-	def answer_state(self) -> Sequence[str | None]:
-		answer = self.model.display_answer()
-		guessed = set(self.model.get_all_guesses())
-
-		return [character if character in guessed else None for character in answer]
-
-	def check_guess(self, guess: str) -> None:
-		if not self.model.guess_is_valid(guess):
-			self.view.show_invalid_guess(guess)
-			return
-		if self.model.guess_is_already_guessed(guess):
-			self.view.show_already_guessed(guess)
-			return
-
-		self.model.make_guess(guess)
-		guess_lower = guess.lower()
-		guess_is_correct = guess_lower in self.model._correct_guesses
-
-		if guess_is_correct:
-			self.view.show_correct_guess(guess)
-		else:
-			self.view.show_incorrect_guess(guess)
-
-	def display_game_end(self) -> None:
-		answer = self.model.answer or self.model.display_answer()
-
-		if self.model.did_player_win:
-			self.view.show_win(answer or "")
-		else:
-			self.view.show_lose(answer or "")
